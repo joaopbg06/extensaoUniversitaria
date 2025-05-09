@@ -9,8 +9,6 @@ st.set_page_config(page_title="Dashboard de Vendas", page_icon="☢️", layout=
 # Carregar dados
 df = pd.read_excel('./BaseLimpo/2013_coleta_tipos_residuos.xlsx')
 
-df = df.iloc[:-1]
-df = df.iloc[:-1]
 
 # FILTROS
 # Sidebar
