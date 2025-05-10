@@ -10,6 +10,10 @@ st.set_page_config(page_title="Dashboard de residuos coletados", page_icon="☢�
 df_soma = pd.read_excel('somas_total_2013_2024.xlsx')
 df_tipos = pd.read_excel('tipo_residuos_total.xlsx')
 
+def aplicar_estilo():
+    with open("style.css") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+aplicar_estilo()
 # FILTROS
 # Sidebar   
 st.sidebar.header("Selecione os Filtros")
@@ -17,13 +21,14 @@ st.sidebar.header("Selecione os Filtros")
 
 tipo_residuo = st.sidebar.multiselect(
     "Tipos de resíduo",
-    # Opções do filto
-    options=df_tipos["tipo_residuo"].unique(),
-    # Opção que vem como por padrão
-    default=df_tipos["tipo_residuo"].unique(),
+    # Seleciona os 10 maiores tipos de resíduos com base em uma coluna numérica relevante
+    options=df_tipos.nlargest(10, 'total_anos')['tipo_residuo'],  
+    # Define como padrão os mesmos 10 maiores tipos
+    default=df_tipos.nlargest(10, 'total_anos')['tipo_residuo'],  
     # Chave única
     key='tipo'
 )
+
 
 
 # Filtrar o Dataframe com as opções selecionadas
@@ -55,17 +60,17 @@ def Graficos():
     # Mostrando a quant de produtos por lojas
 
     fig_barras = px.bar(
-        df_soma,
-        x="ano",
-        y="soma_total_em_KT",
-        color="ano",
+        df_selecao,
+        x="total_anos",
+        y="tipo_residuo",
+        color="tipo_residuo",
         title="Quantidade de Resíduos por ano"
     )
     #Grafico de linha
     # Total de vendas por Loja
 
     fig_linha = px.line(
-        df_selecao.groupby(["ano"]).sum(numeric_only=True).reset_index(),
+        df_soma.groupby(["ano"]).sum(numeric_only=True).reset_index(),
         x= 'ano',
         y='soma_total_em_KT',
         title='Total de Vendas Por loja'
