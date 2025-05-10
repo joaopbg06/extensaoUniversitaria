@@ -4,56 +4,50 @@ import plotly.express as px
 from streamlit_option_menu import option_menu
 
 # Configurações  iniciais
-st.set_page_config(page_title="Dashboard de Vendas", page_icon="☢️", layout="wide")
+st.set_page_config(page_title="Dashboard de residuos coletados", page_icon="☢️", layout="wide")
 
 # Carregar dados
-df = pd.read_excel('./BaseLimpo/2013_coleta_tipos_residuos.xlsx')
-
+df_soma = pd.read_excel('somas_total_2013_2024.xlsx')
+df_tipos = pd.read_excel('tipo_residuos_total.xlsx')
 
 # FILTROS
-# Sidebar
+# Sidebar   
 st.sidebar.header("Selecione os Filtros")
 
-# Filtro por loja
+
 tipo_residuo = st.sidebar.multiselect(
     "Tipos de resíduo",
     # Opções do filto
-    options=df["tipo_residuo"].unique(),
+    options=df_tipos["tipo_residuo"].unique(),
     # Opção que vem como por padrão
-    default=df["tipo_residuo"].unique(),
+    default=df_tipos["tipo_residuo"].unique(),
     # Chave única
     key='tipo'
 )
 
 
 # Filtrar o Dataframe com as opções selecionadas
-df_selecao = df.query("tipo_residuo in @tipo_residuo")
+df_selecao = df_tipos.query("tipo_residuo in @tipo_residuo")
 
 # Graficos e na função da página
 def Home():
-    st.title('Coletas de lixo em 2013')
+    st.title('Coletas de lixo de 2013 a 2023')
 
-    total_vendas = df_selecao['total_2013'].sum()
-    media = df_selecao['total_2013'].mean()
-    mediana = df_selecao['total_2013'].median()
+    total_vendas = df_soma['soma_total_em_KT'].sum()
+    media = df_soma['soma_total_em_KT'].mean()
+    mediana = df_soma['soma_total_em_KT'].median()
 
     total1, total2, total3= st.columns(3)
     with total1:
         # Apresentrar indicadores rápidos
-        st.metric('Total coletado', value=int(total_vendas))
+        st.metric('Total coletado', value=f"{total_vendas:.2f}")
     with total2:
-        st.metric('Média de coleta ao ano', value=f"{media:.1f}")
+        st.metric('Média de coleta', value=f"{media:.2f}")
     with total3:
-        st.metric('Mediana de coleta ao ano', value=int(mediana))
+        st.metric('Mediana de coleta', value=f"{mediana:.2f}")
 
     st.markdown('- - -')
 
-df_melted = pd.melt(
-    df_selecao,
-    id_vars=['tipo_residuo'],   # Coluna que será mantida
-    var_name='Mês',             # Nova coluna com os nomes dos meses
-    value_name='Quantidade'     # Nova coluna com os valores
-)
 
 
 def Graficos():
@@ -61,20 +55,19 @@ def Graficos():
     # Mostrando a quant de produtos por lojas
 
     fig_barras = px.bar(
-        df_melted,
-        x="Mês",
-        y="Quantidade",
-        color="tipo_residuo",
-        barmode="group",
-        title="Quantidade de Resíduos por Mês"
+        df_soma,
+        x="ano",
+        y="soma_total_em_KT",
+        color="ano",
+        title="Quantidade de Resíduos por ano"
     )
     #Grafico de linha
     # Total de vendas por Loja
 
     fig_linha = px.line(
-        df_selecao.groupby(["tipo_residuo"]).sum(numeric_only=True).reset_index(),
-        x='tipo_residuo',
-        y= 'total_2013',
+        df_selecao.groupby(["ano"]).sum(numeric_only=True).reset_index(),
+        x= 'ano',
+        y='soma_total_em_KT',
         title='Total de Vendas Por loja'
 
     )
@@ -103,4 +96,7 @@ def sideBar():
 
 sideBar()
 
-# python -m streamlit run projeto.py
+# python -m streamlit run analise.py
+
+
+
