@@ -36,7 +36,7 @@ df_selecao = df_tipos.query("tipo_residuo in @tipo_residuo")
 
 # Graficos e na função da página
 def Home():
-    st.title('Coletas de lixo de 2013 a 2023')
+    st.title('Coletas de lixo de 2013 a 2024')
 
     total_vendas = df_soma['soma_total_em_KT'].sum()
     media = df_soma['soma_total_em_KT'].mean()
