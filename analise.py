@@ -18,6 +18,7 @@ aplicar_estilo()
 # Sidebar   
 st.sidebar.header("Selecione os Filtros")
 
+
 tipo_residuo = st.sidebar.multiselect(
     "Tipos de resíduo",
     # Seleciona os 10 maiores tipos de resíduos com base em uma coluna numérica relevante
@@ -28,30 +29,18 @@ tipo_residuo = st.sidebar.multiselect(
     key='tipo'
 )
 
-ano = st.sidebar.slider(
-    'Faixa de tempo em anos',
-    min_value=min(df_soma['ano']),
-    max_value=max(df_soma['ano']),
-    value=(min(df_soma['ano']),max(df_soma['ano']))
-)
-
-df_selecao_tipos = df_tipos.query("tipo_residuo in @tipo_residuo")
-
-colunas_ano = [f'total_{a}' for a in range(ano[0], ano[1] + 1) if a != 2022]
 
 
-df_selecao_tipos = df_selecao_tipos[colunas_ano]
-
-
-df_selecao_soma = df_soma.query('@ano[0] <= ano <= @ano[1]')
+# Filtrar o Dataframe com as opções selecionadas
+df_selecao = df_tipos.query("tipo_residuo in @tipo_residuo")
 
 # Graficos e na função da página
 def Home():
     st.title('Coletas de lixo de 2013 a 2024')
 
-    total_vendas = df_soma['soma_total'].sum()
-    media = df_soma['soma_total'].mean()
-    mediana = df_soma['soma_total'].median()
+    total_vendas = df_soma['soma_total_em_KT'].sum()
+    media = df_soma['soma_total_em_KT'].mean()
+    mediana = df_soma['soma_total_em_KT'].median()
 
     total1, total2, total3= st.columns(3)
     with total1:
@@ -64,13 +53,15 @@ def Home():
 
     st.markdown('- - -')
 
+
+
 def Graficos():
     # Criar um grafico de barras
     # Mostrando a quant de produtos por lojas
 
     fig_barras = px.bar(
-        df_selecao_tipos,
-        x="total_2013",
+        df_selecao,
+        x="total_anos",
         y="tipo_residuo",
         color="tipo_residuo",
         title="Quantidade de Resíduos por ano"
@@ -79,9 +70,9 @@ def Graficos():
     # Total de vendas por Loja
 
     fig_linha = px.line(
-        df_selecao_soma.groupby(["ano"]).sum(numeric_only=True).reset_index(),
+        df_soma.groupby(["ano"]).sum(numeric_only=True).reset_index(),
         x= 'ano',
-        y='soma_total',
+        y='soma_total_em_KT',
         title='Total de Vendas Por loja'
 
     )
