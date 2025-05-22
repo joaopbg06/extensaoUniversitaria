@@ -2,13 +2,19 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from streamlit_option_menu import option_menu
+import plotly.graph_objects as go
+
 
 # Configurações  iniciais
-st.set_page_config(page_title="Dashboard de residuos coletados", page_icon="☢️", layout="wide")
+st.set_page_config(page_title="Dashboard de Residuos", page_icon="☢️", layout="wide")
 
 # Carregar dados
-df_soma = pd.read_excel('somas_total_2013_2024.xlsx')
-df_tipos = pd.read_excel('tipo_residuos_total.xlsx')
+df_soma = pd.read_excel('./DF/somas_total_2013_2024.xlsx')
+df_tipos = pd.read_excel('./DF/tipo_residuos_total.xlsx')
+df_soma_mensal = pd.read_excel('./DF/total_mensal_fixed.xlsx')
+df_soma_mensal_estimativa = pd.read_excel('./DF/total_mensal_fixed_ESTIMATIVA.xlsx')
+df_previcao = pd.read_excel('./DF/previsoes_modelos.xlsx')
+
 df_filtro = df_tipos[df_tipos['tipo_residuo'] != 'total_geral']
 
 
@@ -39,9 +45,47 @@ ano = st.sidebar.slider(
 
 colunas_ano = [f'total_{a}' for a in range(ano[0], ano[1] + 1) if a != 2022]
 
+meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+colunas_meses_anos = [f'{mes}/{ i - 2000}' for i in range(ano[0], ano[1] + 1)  if i != 2022 for mes in meses ]
+colunas_meses_anos_estimativa = [f'{mes}/{ i - 2000}' for i in range(ano[0], ano[1] + 1)  if i <= 2020 for mes in meses ]
+
+
+df_selecao_soma_mensal = df_soma_mensal[colunas_meses_anos]
+df_selecao_soma_mensal_long = pd.melt(
+    df_selecao_soma_mensal,
+    var_name='meses/ano',   
+    value_name='total_geral'    
+)
+
+df_selecao_soma_mensal_estimativa = df_soma_mensal_estimativa[colunas_meses_anos_estimativa]
+df_selecao_soma_mensal_estimativa_long = pd.melt(
+    df_selecao_soma_mensal_estimativa,
+    var_name='meses/ano',   
+    value_name='total_geral'    
+)
+
+
+meses_traducao = {
+    'jan': 'jan', 'fev': 'feb', 'mar': 'mar', 'abr': 'apr',
+    'mai': 'may', 'jun': 'jun', 'jul': 'jul', 'ago': 'aug',
+    'set': 'sep', 'out': 'oct', 'nov': 'nov', 'dez': 'dec'
+}
+
+df_selecao_soma_mensal_long['meses/ano'] = df_selecao_soma_mensal_long['meses/ano'].replace(meses_traducao, regex=True)
+df_selecao_soma_mensal_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_long['meses/ano'], format='%b/%y')
+
+df_selecao_soma_mensal_estimativa_long['meses/ano'] = df_selecao_soma_mensal_estimativa_long['meses/ano'].replace(meses_traducao, regex=True)
+df_selecao_soma_mensal_estimativa_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_estimativa_long['meses/ano'], format='%b/%y')
+
 df_selecao_tipos = df_tipos.query(f"tipo_residuo in @tipo_residuo")[colunas_ano]
 df_selecao_tipos_setor = df_tipos.query(f"tipo_residuo in @tipo_residuo")
 df_selecao_soma = df_soma.query('@ano[0] <= ano <= @ano[1]')
+
+
+st.write(df_selecao_soma_mensal_estimativa_long)
+st.write(df_previcao)
+
+
 
 
 def Home():
@@ -60,12 +104,25 @@ def Home():
 
         metric1, metric2 = st.columns(2)
         with metric1:
-            st.metric(f'De acordo com a faixa o maior número de residuo coletado é do ano {qual_ano_1} com:', value=f"{maior_residuo:.2f}", border=True )
+            st.metric(f'A maior coleta foi de {qual_ano_1} com:', value=f"{maior_residuo:.2f}", border=True )
         with metric2:
-            st.metric(f'De acordo com a faixa o menor número de residuo coletado é do ano {qual_ano_2} com:', value=f"{menor_residuo:.2f}", border=True )
+            st.metric(f'A menor coleta foi de {qual_ano_2} com:', value=f"{menor_residuo:.2f}", border=True )
 
 def Graficos():
-    
+
+    cores = {
+    'domiciliar': '#0068C9',          # azul base
+    'entulho_mecanizado': '#74B537',  # verde base
+    'diversos': '#E15759',             # vermelho vibrante
+    'ecoponto': '#F28E2B',             # laranja
+    'piscinoes': '#9467BD',            # roxo
+    'esgoto': '#FFC20A',               # amarelo brilhante
+    'corregos': '#8C564B',             # marrom
+    'varricao_manual': '#E377C2',      # rosa/magenta
+    'feixa_live': '#7F7F7F',           # cinza escuro
+    'coleta_seletiva': '#17BECF',      # turquesa
+}
+
     df_selecao_tipos['total_anos'] = df_selecao_tipos.iloc[:, 1:].select_dtypes(include='number').sum(axis=1)
     df_selecao_tipos['tipo_residuo'] = df_tipos['tipo_residuo']
 
@@ -76,22 +133,24 @@ def Graficos():
         x="total_anos",
         y="tipo_residuo",
         color="tipo_residuo",
-        title="Quantidade de Resíduos de todos os anos"
+        title="Quantidade de Resíduos de todos os anos",
+        color_discrete_map=(cores)
     )
 
     fig_linha = px.line(
-        df_selecao_soma.groupby(["ano"]).sum(numeric_only=True).reset_index(),
-        x= 'ano',
-        y='soma_total',
-        title='Total coletado ao longo dos anos'
-    )
-
+        df_selecao_soma_mensal_long,
+        x= 'meses/ano',
+        y='total_geral',
+        title='Total coletado ao longo dos anos',
+        
+    )   
 
     fig_pie1 = px.pie(
         df_selecao_tipos_setor.nlargest(5, 'total_2013'),
         names='tipo_residuo',
         values='total_2013',
         color='tipo_residuo',
+        color_discrete_map=(cores),
         title='Divição de tipos de residuo no ano de 2013'
     )
 
@@ -100,11 +159,28 @@ def Graficos():
         names='tipo_residuo',
         values='total_2020',
         color='tipo_residuo',
+        color_discrete_map=(cores),
         title='Divição de tipos de residuo no ano de 2020'
     )
 
+    fig_linha_previcao = go.Figure()
 
+    fig_linha_previcao.add_trace(go.Scatter(
+        x=df_selecao_soma_mensal_estimativa_long['meses/ano'], 
+        y=df_selecao_soma_mensal_estimativa_long['total_geral'], 
+        mode='lines', 
+        name='Série 1'
+        ))
     
+    fig_linha_previcao.add_trace(go.Scatter(
+        x=df_previcao['ds'], 
+        y=df_previcao['Previsao_ARIMA'], 
+        mode='lines', 
+        name='Série 2',
+        line=dict(dash='dash')  # Define a linha como traçada
+    ))
+
+
     setor1, setor2 = st.columns(2)
     with setor1:
         st.plotly_chart(fig_pie1,  use_container_width=True)
@@ -112,12 +188,15 @@ def Graficos():
         st.plotly_chart(fig_pie2,  use_container_width=True)
 
     
-    graf1, graf2= st.columns(2)
-    with graf1:
-        st.plotly_chart(fig_barras,  use_container_width=True)
-    with graf2:
-        st.plotly_chart(fig_linha,  use_container_width=True)
+    # graf1, graf2= st.columns(2)
+    # with graf1:
+    st.plotly_chart(fig_barras,  use_container_width=True)
+    # with graf2:
+    st.plotly_chart(fig_linha,  use_container_width=True)
 
+    st.plotly_chart(fig_linha_previcao,  use_container_width=True)
+
+    
 Home()
 Graficos()
 
