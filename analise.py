@@ -4,7 +4,6 @@ import plotly.express as px
 from streamlit_option_menu import option_menu
 import plotly.graph_objects as go
 
-
 # Configurações  iniciais
 st.set_page_config(page_title="Dashboard de Residuos", page_icon="☢️", layout="wide")
 
@@ -110,6 +109,8 @@ df_selecao_soma_mensal_estimativa_long['meses/ano'] = df_selecao_soma_mensal_est
 df_selecao_soma_mensal_estimativa_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_estimativa_long['meses/ano'], format='%b/%y')
 
 
+
+
 # Funções para exibir
 
 # Números gerais
@@ -119,19 +120,6 @@ def Home():
     total_vendas = df_selecao_soma['soma_total'].sum()
 
     st.metric('Total coletado', value=f"{total_vendas:.2f}", border=True)
-    
-    maior_residuo = df_selecao_soma['soma_total'].max()
-    menor_residuo = df_selecao_soma['soma_total'].min()
-
-    if ano != (2022, 2022):
-        qual_ano_1 = df_selecao_soma['ano'][df_selecao_soma['soma_total'] == maior_residuo].iloc[0]
-        qual_ano_2 = df_selecao_soma['ano'][df_selecao_soma['soma_total'] == menor_residuo].iloc[0]
-
-        metric1, metric2 = st.columns(2)
-        with metric1:
-            st.metric(f'A maior coleta foi de {qual_ano_1} com:', value=f"{maior_residuo:.2f}", border=True )
-        with metric2:
-            st.metric(f'A menor coleta foi de {qual_ano_2} com:', value=f"{menor_residuo:.2f}", border=True )
 
 # Graficos do total gerado por mês com previções de 2021 - 2025. Comparando com os dados que já existem
 def previsao():
@@ -141,8 +129,14 @@ def previsao():
         x= 'meses/ano',
         y='total_geral',
         title='Total coletado ao longo dos anos',
-        
-    )   
+    )
+    
+    fig_linha.update_layout(
+        xaxis=dict(showgrid=True),  # Grade vertical
+        yaxis=dict(showgrid=True),  # Grade horizontal
+        template='plotly_white'  # Tema claro para destacar as grades
+    )
+
 
     
     fig_linha_previcao = go.Figure()
@@ -152,6 +146,7 @@ def previsao():
         y=df_selecao_soma_mensal_estimativa_long['total_geral'], 
         mode='lines', 
         name='Histórico', 
+        line=dict(color='#0068C9')
     ))
     
     fig_linha_previcao.add_trace(go.Scatter(
@@ -161,6 +156,13 @@ def previsao():
         name='Previsão',
         line=dict(dash='dot',  color='#FF5733'),  # Define a linha como traçada
     ))
+    
+    fig_linha_previcao.update_layout(
+        title= 'Total coletado ao longo dos anos com previsão',
+        xaxis=dict(showgrid=True),  # Grade vertical
+        yaxis=dict(showgrid=True),  # Grade horizontal
+        template='plotly_white'  # Tema claro para destacar as grades
+    )
 
 
     st.plotly_chart(fig_linha,  use_container_width=True)
@@ -185,15 +187,26 @@ def tipo_residuo_graficos():
 # Gera 2 graficos de setor por um select para comparar proporções entre anos
 def proporcao():
 
-    setor1, setor2 = st.columns(2)
-    with setor1:
-
+    select1, select2 = st.columns(2)
+    with select1:
         ano_pie_1 = st.selectbox(
             'Selecione o Ano do gráfico Abaixo:',
             options=range(2013, 2021),
             index=0,
             key='pie1'
         )
+    with select2:
+        ano_pie_2 = st.selectbox(
+            'Selecione o Ano do gráfico Abaixo:',
+            options=[f'{x}' for x in range(2013, 2021) if x != ano_pie_1],
+            index=6,
+            key='pie2',
+        )
+
+    st.markdown('- - -')
+
+    setor1, setor2 = st.columns(2)
+    with setor1:
 
         fig_pie1 = px.pie(
             df_selecao_tipos_setor.nlargest(5, f'total_{ano_pie_1}'),
@@ -207,12 +220,6 @@ def proporcao():
         st.plotly_chart(fig_pie1,  use_container_width=True)
     with setor2:
 
-        ano_pie_2 = st.selectbox(
-            'Selecione o Ano do gráfico Abaixo:',
-            options=[f'{x}' for x in range(2013, 2021) if x != ano_pie_1],
-            index=6,
-            key='pie2',
-        )
 
         fig_pie2 = px.pie(
             df_selecao_tipos_setor.nlargest(5, f'total_{ano_pie_2}'),
@@ -227,9 +234,11 @@ def proporcao():
     
 
 Home()
-proporcao()
-tipo_residuo_graficos()
 previsao()
+st.markdown('- - -')
+proporcao()
+st.markdown('- - -')
+tipo_residuo_graficos()
 
 
 
