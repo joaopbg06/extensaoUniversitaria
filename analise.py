@@ -15,17 +15,19 @@ df_soma_mensal = pd.read_excel('./DF/total_mensal_fixed.xlsx')
 df_soma_mensal_estimativa = pd.read_excel('./DF/total_mensal_fixed_ESTIMATIVA.xlsx')
 df_previcao = pd.read_excel('./DF/previsoes_modelos.xlsx')
 
+# Criar um filtro para retirar o total_geral para fazer somas
 df_filtro = df_tipos[df_tipos['tipo_residuo'] != 'total_geral']
 
-
+# Style
 def aplicar_estilo():
     with open("style.css") as f:
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 aplicar_estilo()
 
-
+# Sidebar
 st.sidebar.header("Selecione os Filtros")
 
+# Filtro do tipo de residuo
 tipo_residuo = st.sidebar.multiselect(
     "Tipos de resíduo",
     # Seleciona os 10 maiores tipos de resíduos com base em uma coluna numérica relevante
@@ -36,6 +38,7 @@ tipo_residuo = st.sidebar.multiselect(
     key='tipo'
 )
 
+# Filtro para o ano
 ano = st.sidebar.slider(
     'Faixa de tempo em anos',
     min_value=min(df_soma['ano']),
@@ -43,51 +46,73 @@ ano = st.sidebar.slider(
     value=(min(df_soma['ano']),max(df_soma['ano']))
 )
 
+# Lista para configuração
+
+meses = [
+    'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+meses_traducao = {
+    'jan': 'jan', 'fev': 'feb', 'mar': 'mar', 'abr': 'apr',
+    'mai': 'may', 'jun': 'jun', 'jul': 'jul', 'ago': 'aug',
+    'set': 'sep', 'out': 'oct', 'nov': 'nov', 'dez': 'dec'
+}
+cores = {
+    'domiciliar': '#0068C9',          
+    'entulho_mecanizado': '#74B537',  
+    'diversos': '#E15759',            
+    'ecoponto': '#F28E2B',             
+    'piscinoes': '#9467BD',            
+    'esgoto': '#FFC20A',               
+    'corregos': '#8C564B',            
+    'varricao_manual': '#E377C2',      
+    'feixa_live': '#7F7F7F',           
+    'coleta_seletiva': '#17BECF',      
+}
+
+# Aplicar filtro do tipo de residuo e do ano entre colunas
 colunas_ano = [f'total_{a}' for a in range(ano[0], ano[1] + 1) if a != 2022]
+df_selecao_tipos = df_tipos.query(f"tipo_residuo in @tipo_residuo")[colunas_ano]
+# Restaurando as colunas perdidas
+df_selecao_tipos['total_anos'] = df_tipos['total_anos']
+df_selecao_tipos['tipo_residuo'] = df_tipos['tipo_residuo']
 
-meses = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+# Filtrar o df da soma pelo o tempo
+df_selecao_soma = df_soma.query('@ano[0] <= ano <= @ano[1]')
+
+# Aplicar o filtro do df do grafico de setor
+df_selecao_tipos_setor = df_tipos.query(f"tipo_residuo in @tipo_residuo")
+
+
+# Ajustar o df da soma mensal de 2013 - 2024
 colunas_meses_anos = [f'{mes}/{ i - 2000}' for i in range(ano[0], ano[1] + 1)  if i != 2022 for mes in meses ]
-colunas_meses_anos_estimativa = [f'{mes}/{ i - 2000}' for i in range(ano[0], ano[1] + 1)  if i <= 2020 for mes in meses ]
-
-
 df_selecao_soma_mensal = df_soma_mensal[colunas_meses_anos]
+
 df_selecao_soma_mensal_long = pd.melt(
     df_selecao_soma_mensal,
     var_name='meses/ano',   
     value_name='total_geral'    
 )
 
+df_selecao_soma_mensal_long['meses/ano'] = df_selecao_soma_mensal_long['meses/ano'].replace(meses_traducao, regex=True)
+df_selecao_soma_mensal_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_long['meses/ano'], format='%b/%y')
+
+
+# Ajustar o df da soma mensal de 2013 - 2020
+colunas_meses_anos_estimativa = [f'{mes}/{ i - 2000}' for i in range(ano[0], ano[1] + 1)  if i <= 2020 for mes in meses ]
 df_selecao_soma_mensal_estimativa = df_soma_mensal_estimativa[colunas_meses_anos_estimativa]
+
 df_selecao_soma_mensal_estimativa_long = pd.melt(
     df_selecao_soma_mensal_estimativa,
     var_name='meses/ano',   
     value_name='total_geral'    
 )
 
-
-meses_traducao = {
-    'jan': 'jan', 'fev': 'feb', 'mar': 'mar', 'abr': 'apr',
-    'mai': 'may', 'jun': 'jun', 'jul': 'jul', 'ago': 'aug',
-    'set': 'sep', 'out': 'oct', 'nov': 'nov', 'dez': 'dec'
-}
-
-df_selecao_soma_mensal_long['meses/ano'] = df_selecao_soma_mensal_long['meses/ano'].replace(meses_traducao, regex=True)
-df_selecao_soma_mensal_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_long['meses/ano'], format='%b/%y')
-
 df_selecao_soma_mensal_estimativa_long['meses/ano'] = df_selecao_soma_mensal_estimativa_long['meses/ano'].replace(meses_traducao, regex=True)
 df_selecao_soma_mensal_estimativa_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_estimativa_long['meses/ano'], format='%b/%y')
 
-df_selecao_tipos = df_tipos.query(f"tipo_residuo in @tipo_residuo")[colunas_ano]
-df_selecao_tipos_setor = df_tipos.query(f"tipo_residuo in @tipo_residuo")
-df_selecao_soma = df_soma.query('@ano[0] <= ano <= @ano[1]')
 
+# Funções para exibir
 
-st.write(df_selecao_soma_mensal_estimativa_long)
-st.write(df_previcao)
-
-
-
-
+# Números gerais
 def Home():
     st.title('Coletas de lixo de 2013 a 2024')
 
@@ -108,25 +133,42 @@ def Home():
         with metric2:
             st.metric(f'A menor coleta foi de {qual_ano_2} com:', value=f"{menor_residuo:.2f}", border=True )
 
-def Graficos():
+# Graficos do total gerado por mês com previções de 2021 - 2025. Comparando com os dados que já existem
+def previsao():
 
-    cores = {
-    'domiciliar': '#0068C9',          # azul base
-    'entulho_mecanizado': '#74B537',  # verde base
-    'diversos': '#E15759',             # vermelho vibrante
-    'ecoponto': '#F28E2B',             # laranja
-    'piscinoes': '#9467BD',            # roxo
-    'esgoto': '#FFC20A',               # amarelo brilhante
-    'corregos': '#8C564B',             # marrom
-    'varricao_manual': '#E377C2',      # rosa/magenta
-    'feixa_live': '#7F7F7F',           # cinza escuro
-    'coleta_seletiva': '#17BECF',      # turquesa
-}
+    fig_linha = px.line(
+        df_selecao_soma_mensal_long,
+        x= 'meses/ano',
+        y='total_geral',
+        title='Total coletado ao longo dos anos',
+        
+    )   
 
-    df_selecao_tipos['total_anos'] = df_selecao_tipos.iloc[:, 1:].select_dtypes(include='number').sum(axis=1)
-    df_selecao_tipos['tipo_residuo'] = df_tipos['tipo_residuo']
+    
+    fig_linha_previcao = go.Figure()
 
-    df_selecao_tipos_setor['tipo_residuo'] = df_tipos['tipo_residuo']
+    fig_linha_previcao.add_trace(go.Scatter(
+        x=df_selecao_soma_mensal_estimativa_long['meses/ano'], 
+        y=df_selecao_soma_mensal_estimativa_long['total_geral'], 
+        mode='lines', 
+        name='Histórico', 
+    ))
+    
+    fig_linha_previcao.add_trace(go.Scatter(
+        x=df_previcao['ds'], 
+        y=df_previcao['Previsao_ARIMA'], 
+        mode='lines', 
+        name='Previsão',
+        line=dict(dash='dot',  color='#FF5733'),  # Define a linha como traçada
+    ))
+
+
+    st.plotly_chart(fig_linha,  use_container_width=True)
+
+    st.plotly_chart(fig_linha_previcao,  use_container_width=True)
+
+# Grafico de barras que mostra os 10 maiores tipos de residuos coletados
+def tipo_residuo_graficos():
 
     fig_barras = px.bar(    
         df_selecao_tipos,
@@ -137,68 +179,60 @@ def Graficos():
         color_discrete_map=(cores)
     )
 
-    fig_linha = px.line(
-        df_selecao_soma_mensal_long,
-        x= 'meses/ano',
-        y='total_geral',
-        title='Total coletado ao longo dos anos',
-        
-    )   
 
-    fig_pie1 = px.pie(
-        df_selecao_tipos_setor.nlargest(5, 'total_2013'),
-        names='tipo_residuo',
-        values='total_2013',
-        color='tipo_residuo',
-        color_discrete_map=(cores),
-        title='Divição de tipos de residuo no ano de 2013'
-    )
+    st.plotly_chart(fig_barras,  use_container_width=True)
 
-    fig_pie2 = px.pie(
-        df_selecao_tipos_setor.nlargest(5, 'total_2020'),
-        names='tipo_residuo',
-        values='total_2020',
-        color='tipo_residuo',
-        color_discrete_map=(cores),
-        title='Divição de tipos de residuo no ano de 2020'
-    )
-
-    fig_linha_previcao = go.Figure()
-
-    fig_linha_previcao.add_trace(go.Scatter(
-        x=df_selecao_soma_mensal_estimativa_long['meses/ano'], 
-        y=df_selecao_soma_mensal_estimativa_long['total_geral'], 
-        mode='lines', 
-        name='Série 1'
-        ))
-    
-    fig_linha_previcao.add_trace(go.Scatter(
-        x=df_previcao['ds'], 
-        y=df_previcao['Previsao_ARIMA'], 
-        mode='lines', 
-        name='Série 2',
-        line=dict(dash='dash')  # Define a linha como traçada
-    ))
-
+# Gera 2 graficos de setor por um select para comparar proporções entre anos
+def proporcao():
 
     setor1, setor2 = st.columns(2)
     with setor1:
+
+        ano_pie_1 = st.selectbox(
+            'Selecione o Ano do gráfico Abaixo:',
+            options=range(2013, 2021),
+            index=0,
+            key='pie1'
+        )
+
+        fig_pie1 = px.pie(
+            df_selecao_tipos_setor.nlargest(5, f'total_{ano_pie_1}'),
+            names='tipo_residuo',
+            values=f'total_{ano_pie_1}',
+            color='tipo_residuo',
+            color_discrete_map=(cores),
+            title=f'Divição de tipos de residuo no ano de {ano_pie_1}'
+        )
+
         st.plotly_chart(fig_pie1,  use_container_width=True)
     with setor2:
+
+        ano_pie_2 = st.selectbox(
+            'Selecione o Ano do gráfico Abaixo:',
+            options=[f'{x}' for x in range(2013, 2021) if x != ano_pie_1],
+            index=6,
+            key='pie2',
+        )
+
+        fig_pie2 = px.pie(
+            df_selecao_tipos_setor.nlargest(5, f'total_{ano_pie_2}'),
+            names='tipo_residuo',
+            values=f'total_{ano_pie_2}',
+            color='tipo_residuo',
+            color_discrete_map=(cores),
+            title=f'Divição de tipos de residuo no ano de {ano_pie_2}'
+        )
+
         st.plotly_chart(fig_pie2,  use_container_width=True)
-
     
-    # graf1, graf2= st.columns(2)
-    # with graf1:
-    st.plotly_chart(fig_barras,  use_container_width=True)
-    # with graf2:
-    st.plotly_chart(fig_linha,  use_container_width=True)
 
-    st.plotly_chart(fig_linha_previcao,  use_container_width=True)
-
-    
 Home()
-Graficos()
+proporcao()
+tipo_residuo_graficos()
+previsao()
+
+
+
 
 # python -m streamlit run analise.py
 
