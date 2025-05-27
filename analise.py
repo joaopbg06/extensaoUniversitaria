@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 from streamlit_option_menu import option_menu
 import plotly.graph_objects as go
+from streamlit_tags import st_tags
 
 # Configurações  iniciais
 st.set_page_config(page_title="Dashboard de Residuos", page_icon="☢️", layout="wide")
@@ -23,28 +24,6 @@ def aplicar_estilo():
         st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 aplicar_estilo()
 
-# Sidebar
-st.sidebar.header("Selecione os Filtros")
-
-# Filtro do tipo de residuo
-tipo_residuo = st.sidebar.multiselect(
-    "Tipos de resíduo",
-    # Seleciona os 10 maiores tipos de resíduos com base em uma coluna numérica relevante
-    options=df_filtro.nlargest(10, 'total_anos')['tipo_residuo'],  
-    # Define como padrão os mesmos 10 maiores tipos
-    default=df_filtro.nlargest(10, 'total_anos')['tipo_residuo'],  
-    # Chave única
-    key='tipo'
-)
-
-# Filtro para o ano
-ano = st.sidebar.slider(
-    'Faixa de tempo em anos',
-    min_value=min(df_soma['ano']),
-    max_value=max(df_soma['ano']),
-    value=(min(df_soma['ano']),max(df_soma['ano']))
-)
-
 # Lista para configuração
 
 meses = [
@@ -55,21 +34,67 @@ meses_traducao = {
     'set': 'sep', 'out': 'oct', 'nov': 'nov', 'dez': 'dec'
 }
 cores = {
-    'domiciliar': '#0068C9',          
-    'entulho_mecanizado': '#74B537',  
-    'diversos': '#E15759',            
-    'ecoponto': '#F28E2B',             
-    'piscinoes': '#9467BD',            
-    'esgoto': '#FFC20A',               
-    'corregos': '#8C564B',            
-    'varricao_manual': '#E377C2',      
-    'feixa_live': '#7F7F7F',           
-    'coleta_seletiva': '#17BECF',      
+    'Domiciliar': '#0068C9',          
+    'Entulho Mecanizado': '#74B537',  
+    'Diversos': '#E15759',            
+    'Ecoponto': '#F28E2B',             
+    'Piscinões': '#9467BD',            
+    'Esgoto': '#FFC20A',               
+    'Córregos': '#8C564B',            
+    'Varricação Manual': '#E377C2',      
+    'Feira Livre': '#7F7F7F',           
+    'Coleta Seletiva': '#17BECF',      
 }
+labels_map = {
+    'domiciliar': 'Domiciliar',
+    'entulho_mecanizado': 'Entulho Mecanizado',
+    'diversos': 'Diversos',
+    'ecoponto': 'Ecoponto',
+    'piscinoes': 'Piscinões',
+    'esgoto': 'Esgoto',
+    'corregos': 'Córregos',
+    'varricao_manual': 'Varricação Manual',
+    'feira_livre': 'Feira Livre',
+    'coleta_seletiva': 'Coleta Seletiva',
+}
+
+# Replace
+
+df_filtro['tipo_residuo'] = df_filtro['tipo_residuo'].replace(labels_map)
+df_tipos['tipo_residuo'] = df_tipos['tipo_residuo'].replace(labels_map)
+
+
+# Sidebar
+st.sidebar.header("Selecione os Filtros")
+
+# Filtro do tipo de residuo
+
+with st.sidebar.expander("Configurações de Tipos de Resíduo"):
+    tipo_residuo = st.multiselect(
+        "Tipos de resíduo",
+        options=df_filtro.nlargest(10, 'total_anos')['tipo_residuo'],  
+        default=df_filtro.nlargest(10, 'total_anos')['tipo_residuo'],  
+        help="Selecione um ou mais tipos de resíduos para visualizar no gráfico.",
+        key='tipo'
+    )
+
+
+with st.sidebar.expander("Configurações de Faixa de Tempo"):
+    ano = st.slider(
+        'Faixa de tempo em anos',
+        min_value=min(df_soma['ano']),
+        max_value=max(df_soma['ano']),
+        value=(min(df_soma['ano']), max(df_soma['ano'])),
+        help="Arraste para selecionar o intervalo de anos."
+    )
+
+
+
 
 # Aplicar filtro do tipo de residuo e do ano entre colunas
 colunas_ano = [f'total_{a}' for a in range(ano[0], ano[1] + 1) if a != 2022]
 df_selecao_tipos = df_tipos.query(f"tipo_residuo in @tipo_residuo")[colunas_ano]
+
 # Restaurando as colunas perdidas
 df_selecao_tipos['total_anos'] = df_tipos['total_anos']
 df_selecao_tipos['tipo_residuo'] = df_tipos['tipo_residuo']
@@ -108,9 +133,6 @@ df_selecao_soma_mensal_estimativa_long = pd.melt(
 df_selecao_soma_mensal_estimativa_long['meses/ano'] = df_selecao_soma_mensal_estimativa_long['meses/ano'].replace(meses_traducao, regex=True)
 df_selecao_soma_mensal_estimativa_long['meses/ano'] = pd.to_datetime(df_selecao_soma_mensal_estimativa_long['meses/ano'], format='%b/%y')
 
-
-
-
 # Funções para exibir
 
 # Números gerais
@@ -129,6 +151,10 @@ def previsao():
         x= 'meses/ano',
         y='total_geral',
         title='Total coletado ao longo dos anos',
+        labels={
+            'total_geral': 'Total Geral',
+            'meses/ano': 'Tempo'
+        }
     )
     
     fig_linha.update_layout(
@@ -137,7 +163,13 @@ def previsao():
         template='plotly_white'  # Tema claro para destacar as grades
     )
 
-
+    fig_linha.update_traces(
+    hovertemplate=(
+        '<b>Data:</b> %{x}<br>'        # Exibe o mês/ano no eixo X
+        '<b>Total Geral:</b> %{y}<br>'   # Exibe o total geral no eixo Y
+        '<extra></extra>'                # Remove o texto adicional padrão do Plotly
+    )
+    )
     
     fig_linha_previcao = go.Figure()
 
@@ -158,13 +190,25 @@ def previsao():
     ))
     
     fig_linha_previcao.update_layout(
-        title= 'Total coletado ao longo dos anos com previsão',
-        xaxis=dict(showgrid=True),  # Grade vertical
-        yaxis=dict(showgrid=True),  # Grade horizontal
+        title='Total coletado ao longo dos anos com previsão',
+        xaxis=dict(
+            showgrid=True,
+            title='Tempo'  # Rótulo do eixo X
+        ),
+        yaxis=dict(
+            showgrid=True,
+            title='Total Geral'  # Rótulo do eixo Y
+        ),
         template='plotly_white'  # Tema claro para destacar as grades
+)
+    fig_linha_previcao.update_traces(
+        hovertemplate=(
+            '<b>Data:</b> %{x}<br>'        # Exibe o mês/ano no eixo X
+            '<b>Total Geral:</b> %{y}<br>'   # Exibe o total geral no eixo Y
+            '<extra></extra>'                # Remove o texto adicional padrão do Plotly
+        )
     )
-
-
+    
     st.plotly_chart(fig_linha,  use_container_width=True)
 
     st.plotly_chart(fig_linha_previcao,  use_container_width=True)
@@ -173,12 +217,24 @@ def previsao():
 def tipo_residuo_graficos():
 
     fig_barras = px.bar(    
-        df_selecao_tipos,
+        df_selecao_tipos.sort_values(by='total_anos', ascending=False),
         x="total_anos",
         y="tipo_residuo",
         color="tipo_residuo",
         title="Quantidade de Resíduos de todos os anos",
-        color_discrete_map=(cores)
+        color_discrete_map=(cores),
+        labels={
+            'tipo_residuo': 'Tipos de Resíduo',
+            'total_anos': 'Total Geral'
+        }
+    )
+
+    fig_barras.update_traces(
+        hovertemplate=(
+            '<b>Tipo de Resíduo:</b> %{y}<br>'  # Nome do tipo de resíduo
+            '<b>Total:</b> %{x}<br>'           # Quantidade total
+            '<extra></extra>'                  # Remove o texto extra padrão
+        )
     )
 
 
@@ -190,14 +246,14 @@ def proporcao():
     select1, select2 = st.columns(2)
     with select1:
         ano_pie_1 = st.selectbox(
-            'Selecione o Ano do gráfico Abaixo:',
+            'Selecione o ano do gráfico abaixo:',
             options=range(2013, 2021),
             index=0,
             key='pie1'
         )
     with select2:
         ano_pie_2 = st.selectbox(
-            'Selecione o Ano do gráfico Abaixo:',
+            'Selecione o ano do gráfico abaixo:',
             options=[f'{x}' for x in range(2013, 2021) if x != ano_pie_1],
             index=6,
             key='pie2',
@@ -214,8 +270,18 @@ def proporcao():
             values=f'total_{ano_pie_1}',
             color='tipo_residuo',
             color_discrete_map=(cores),
-            title=f'Divição de tipos de residuo no ano de {ano_pie_1}'
+            title=f'Divisão de tipos de resíduo no ano de {ano_pie_1}',
         )
+
+        fig_pie1.update_traces(
+            hovertemplate=(
+                '<b>Tipo de Resíduo:</b> %{label}<br>'   # Nome do tipo de resíduo
+                '<b>Total:</b> %{value}<br>'             # Valor total
+                '<b>Porcentagem:</b> %{percent}<br>'     # Porcentagem do total
+                '<extra></extra>'                        # Remove o texto adicional padrão do Plotly
+            )
+        )
+
 
         st.plotly_chart(fig_pie1,  use_container_width=True)
     with setor2:
@@ -227,17 +293,29 @@ def proporcao():
             values=f'total_{ano_pie_2}',
             color='tipo_residuo',
             color_discrete_map=(cores),
-            title=f'Divição de tipos de residuo no ano de {ano_pie_2}'
+            title=f'Divisão de tipos de resíduo no ano de {ano_pie_2}'
         )
 
+        fig_pie2.update_traces(
+            hovertemplate=(
+                '<b>Tipo de Resíduo:</b> %{label}<br>'   # Nome do tipo de resíduo
+                '<b>Total:</b> %{value}<br>'             # Valor total
+                '<b>Porcentagem:</b> %{percent}<br>'     # Porcentagem do total
+                '<extra></extra>'                        # Remove o texto adicional padrão do Plotly
+            )
+        )
         st.plotly_chart(fig_pie2,  use_container_width=True)
     
 
 Home()
 previsao()
+
 st.markdown('- - -')
+
 proporcao()
+
 st.markdown('- - -')
+
 tipo_residuo_graficos()
 
 
