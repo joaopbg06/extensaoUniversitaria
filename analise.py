@@ -254,7 +254,7 @@ def proporcao():
     with select2:
         ano_pie_2 = st.selectbox(
             'Selecione o ano do gráfico abaixo:',
-            options=[f'{x}' for x in range(2013, 2021) if x != ano_pie_1],
+            options=[x for x in range(2013, 2021) if x != ano_pie_1],
             index=6,
             key='pie2',
         )
@@ -282,8 +282,11 @@ def proporcao():
             )
         )
 
+        total_do_ano_1 = df_selecao_soma['soma_total'][df_selecao_soma['ano'] == ano_pie_1].iloc[0]
 
         st.plotly_chart(fig_pie1,  use_container_width=True)
+        st.metric(f'Total coletado no ano de {ano_pie_1}', value=f"{total_do_ano_1}", border=True)
+        
     with setor2:
 
 
@@ -304,7 +307,11 @@ def proporcao():
                 '<extra></extra>'                        # Remove o texto adicional padrão do Plotly
             )
         )
+
+        total_do_ano_2 = df_selecao_soma['soma_total'][df_selecao_soma['ano'] == ano_pie_2].iloc[0]
+        
         st.plotly_chart(fig_pie2,  use_container_width=True)
+        st.metric(f'Total coletado no ano de {ano_pie_2}', value=f"{total_do_ano_2}", border=True)
     
 
 Home()
