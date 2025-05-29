@@ -345,7 +345,6 @@ def proporcao():
             key='pie2',
         )
 
-    st.markdown('- - -')
 
     setor1, setor2 = st.columns(2)
     with setor1:
@@ -402,14 +401,10 @@ def proporcao():
 
 Home()
 previsao()
-soma_tipo()
-
 st.markdown('- - -')
-
 proporcao()
-
 st.markdown('- - -')
-
+soma_tipo()
 tipo_residuo_graficos()
 
 
